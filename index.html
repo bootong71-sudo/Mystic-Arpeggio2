@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mystic Arpeggio 2</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 1.5s ease;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer;
+        }
+        
+        /* 設定パネルを開閉するためのトグルボタン */
+        #toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #f8fafc;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: background 0.2s, transform 0.2s;
+        }
+        #toggle-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: scale(1.05);
+        }
+
+        /* コントロールパネルのスタイル */
+        #controls {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 16px;
+            border-radius: 14px;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            width: 240px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #controls.hidden {
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+        }
+        select {
+            background: rgba(30, 41, 59, 0.9);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+        select:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        #info-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+            pointer-events: none;
+            text-align: center;
+            letter-spacing: 0.05em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="toggle-btn">⚙️ 設定</button>
+
+    <div id="controls">
+        <div class="control-group">
+            <label for="chordSelect">和音の種類</label>
+            <select id="chordSelect">
+                <option value="major">メジャー (Major)</option>
+                <option value="minor">マイナー (Minor)</option>
+                <option value="maj7">メジャーセブンス (Maj7)</option>
+                <option value="min7">マイナーセブンス (Min7)</option>
+                <option value="sus4">サスフォー (Sus4)</option>
+                <option value="add9">アドナインス (Add9)</option>
+                <option value="lydian">リディアン (Lydian)</option>
+                <option value="dorian">ドリアン (Dorian)</option>
+                <option value="mystic">神秘コード (Mystic)</option>
+                <option value="pentatonic">ペンタトニック (Pentatonic)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="keySelect">キー (Root)</label>
+            <select id="keySelect">
+                <option value="0">C</option>
+                <option value="1">C# / Db</option>
+                <option value="2">D</option>
+                <option value="3">D# / Eb</option>
+                <option value="4">E</option>
+                <option value="5">F</option>
+                <option value="6">F# / Gb</option>
+                <option value="7">G</option>
+                <option value="8">G# / Ab</option>
+                <option value="9">A</option>
+                <option value="10">A# / Bb</option>
+                <option value="11">B</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="themeSelect">カラーテーマ</label>
+            <select id="themeSelect">
+                <option value="1">1. 現在のモード (ダーク＆ネオン)</option>
+                <option value="2">2. タッチ色彩変化 (波紋とともに画面が染まる)</option>
+                <option value="3">3. ホワイト＆ブラック</option>
+                <option value="4">4. 淡いみずいろ (音ごとに波紋が出る)</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="info-overlay">画面をタップ・クリックするか、キーボードのキーを押してください</div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // 設定パネルの開閉トグル
+        const toggleBtn = document.getElementById('toggle-btn');
+        const controlsPanel = document.getElementById('controls');
+        let isPanelVisible = true;
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isPanelVisible = !isPanelVisible;
+            if (isPanelVisible) {
+                controlsPanel.classList.remove('hidden');
+                toggleBtn.textContent = '⚙️ 設定';
+            } else {
+                controlsPanel.classList.add('hidden');
+                toggleBtn.textContent = '⚙️ 設定を開く';
+            }
+        });
+
+        // --- 音声・オーディオエンジン (Web Audio API) ---
+        let audioCtx = null;
+        let masterGain = null;
+        let compressor = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.setValueAtTime(-12, audioCtx.currentTime);
+            compressor.knee.setValueAtTime(10, audioCtx.currentTime);
+            compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+            compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+            compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+        }
+
+        function midiToFreq(midiNote) {
+            return 440 * Math.pow(2, (midiNote - 69) / 12);
+        }
+
+        const chordFormulas = {
+            major: [0, 4, 7, 11, 14, 16],
+            minor: [0, 3, 7, 10, 14, 17],
+            maj7: [0, 4, 7, 11, 14, 18],
+            min7: [0, 3, 7, 10, 14, 17],
+            sus4: [0, 5, 7, 10, 14, 17],
+            add9: [0, 4, 7, 11, 14, 21],
+            lydian: [0, 4, 7, 11, 14, 18],
+            dorian: [0, 3, 7, 10, 14, 17],
+            mystic: [0, 6, 10, 13, 16, 20],
+            pentatonic: [0, 2, 7, 9, 12, 14, 19]
+        };
+
+        // アルペジオ再生クラス（ステレオパン対応）
+        class ArpeggioPlayer {
+            constructor(rootMidi, chordType, baseOctave, startOffsetIndex, speedMultiplier, panPosition, x, y, themeSelect, customHue) {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const intervals = chordFormulas[chordType] || chordFormulas.major;
+                const baseNote = (12 * baseOctave) + rootMidi; 
+                
+                const len = intervals.length;
+                const startIndex = Math.abs(startOffsetIndex) % len;
+                
+                const notes = [];
+                for (let i = 0; i < len; i++) {
+                    let idx = (startIndex + i) % len;
+                    let octaveShift = Math.floor((startIndex + i) / len) * 12;
+                    notes.push(baseNote + intervals[idx] + octaveShift);
+                }
+
+                this.activeNodes = [];
+                this.isPlaying = true;
+                
+                const baseInterval = 0.38;
+                const noteInterval = baseInterval / speedMultiplier; 
+                const repeatCycle = 6.0 / speedMultiplier; 
+                const totalDuration = 15.0; 
+                const startTime = audioCtx.currentTime;
+
+                const playNote = (midi, timeOffset, loopIndex) => {
+                    if (!this.isPlaying) return;
+                    try {
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        const filter = audioCtx.createBiquadFilter();
+                        
+                        // ステレオ定位用パンナーノード (左:-1.0 〜 右:1.0)
+                        let panner = null;
+                        if (audioCtx.createStereoPanner) {
+                            panner = audioCtx.createStereoPanner();
+                            panner.pan.setValueAtTime(panPosition, startTime + timeOffset);
+                        }
+
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(midiToFreq(midi), startTime + timeOffset);
+
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(1800, startTime + timeOffset);
+
+                        const t = startTime + timeOffset;
+                        const globalFadeMultiplier = Math.max(0, 1 - (timeOffset / totalDuration));
+                        const peakGain = 0.12 * globalFadeMultiplier;
+
+                        gainNode.gain.setValueAtTime(0.001, t);
+                        gainNode.gain.linearRampToValueAtTime(peakGain, t + 0.08);
+                        gainNode.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
+
+                        // オーディオ配線
+                        osc.connect(filter);
+                        filter.connect(gainNode);
+                        
+                        if (panner) {
+                            gainNode.connect(panner);
+                            panner.connect(compressor);
+                        } else {
+                            gainNode.connect(compressor);
+                        }
+
+                        osc.start(t);
+                        osc.stop(t + 3.5);
+
+                        this.activeNodes.push({ osc, gainNode });
+
+                        if (themeSelect === '4') {
+                            const delayMs = timeOffset * 1000;
+                            setTimeout(() => {
+                                if (this.isPlaying) {
+                                    ripples.push(new Ripple(x, y, themeSelect, customHue, 0));
+                                }
+                            }, delayMs);
+                        }
+
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                for (let cycle = 0; cycle < 4; cycle++) {
+                    let cycleStartTime = cycle * repeatCycle;
+                    if (cycleStartTime >= totalDuration) break;
+
+                    notes.forEach((midi, i) => {
+                        let noteTime = cycleStartTime + (i * noteInterval);
+                        if (noteTime < totalDuration) {
+                            playNote(midi, noteTime, cycle);
+                        }
+                    });
+                }
+
+                this.timeoutId = setTimeout(() => {
+                    this.stop();
+                }, totalDuration * 1000);
+            }
+
+            stop() {
+                this.isPlaying = false;
+                if (this.timeoutId) clearTimeout(this.timeoutId);
+                this.activeNodes.forEach(node => {
+                    try {
+                        node.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                        node.gain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+                        node.osc.stop(audioCtx.currentTime + 0.15);
+                    } catch(e) {}
+                });
+                this.activeNodes = [];
+            }
+        }
+
+        // --- キャンバス・波紋アニメーション ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let ripples = [];
+        let targetBgHue = 210;
+        let ambientTints = [];
+
+        class Ripple {
+            constructor(x, y, theme, customHue, delay = 0) {
+                this.x = x;
+                this.y = y;
+                this.radius = 0;
+                this.maxRadius = Math.max(window.innerWidth, window.innerHeight) * 0.85;
+                this.speed = 1.8;
+                this.opacity = 0.85;
+                this.theme = theme;
+                this.delayTimer = delay;
+                
+                if (customHue !== undefined) {
+                    this.hue = customHue;
+                } else if (theme === '1' || theme === '2') {
+                    this.hue = Math.floor(Math.random() * 360);
+                } else if (theme === '3') {
+                    this.hue = Math.floor(Math.random() * 360);
+                    this.saturation = 65 + Math.random() * 25;
+                    this.lightness = 60 + Math.random() * 15;
+                } else if (theme === '4') {
+                    this.hue = 175 + Math.random() * 60;
+                }
+            }
+
+            update() {
+                if (this.delayTimer > 0) {
+                    this.delayTimer--;
+                    return;
+                }
+                this.radius += this.speed;
+                let progress = this.radius / this.maxRadius;
+                this.opacity = Math.max(0, 0.85 * (1 - progress * progress));
+            }
+
+            draw(ctx) {
+                if (this.delayTimer > 0) return;
+                ctx.save();
+                ctx.lineWidth = 3.5;
+
+                if (this.theme === '3') {
+                    ctx.strokeStyle = `hsla(${this.hue}, ${this.saturation}%, ${this.lightness}%, ${this.opacity})`;
+                    ctx.fillStyle = `hsla(${this.hue}, ${this.saturation}%, ${this.lightness}%, ${this.opacity * 0.08})`;
+                } else if (this.theme === '4') {
+                    ctx.strokeStyle = `hsla(${this.hue}, 85%, 65%, ${this.opacity})`;
+                    ctx.fillStyle = `hsla(${this.hue}, 80%, 75%, ${this.opacity * 0.08})`;
+                } else {
+                    ctx.strokeStyle = `hsla(${this.hue}, 90%, 65%, ${this.opacity})`;
+                    ctx.fillStyle = `hsla(${this.hue}, 90%, 60%, ${this.opacity * 0.06})`;
+                }
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                if (this.theme === '4' || this.theme === '1' || this.theme === '3') {
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        let lastTriggerTime = 0;
+        const THROTTLE_MS = 100;
+
+        function triggerInteraction(x, y) {
+            const now = performance.now();
+            if (now - lastTriggerTime < THROTTLE_MS) {
+                return;
+            }
+            lastTriggerTime = now;
+
+            const chordSelect = document.getElementById('chordSelect').value;
+            const keySelect = parseInt(document.getElementById('keySelect').value);
+            const themeSelect = document.getElementById('themeSelect').value;
+
+            const indexOffset = Math.floor((x / window.innerWidth) * 6);
+
+            // 【横位置：スピード変化 ＆ ステレオパン位置】
+            // 左端: スピード 1/3倍 ＆ パン -1.0 (完全左)
+            // 右端: スピード 1.5倍 ＆ パン +1.0 (完全右)
+            const normalizedX = x / window.innerWidth;
+            const speedMultiplier = (1/3) + normalizedX * (1.5 - (1/3));
+            const panPosition = (normalizedX * 2) - 1.0; // 0〜1 を -1.0〜+1.0 に変換
+
+            // 【縦位置：オクターブ変化】下＝低音、上＝高音
+            const normalizedY = 1 - (y / window.innerHeight);
+            const baseOctave = 3 + Math.floor(normalizedY * 3.99);
+
+            let customHue = Math.floor(Math.random() * 360);
+
+            if (themeSelect === '1') {
+                targetBgHue = (targetBgHue + 35) % 360;
+            } else if (themeSelect === '2') {
+                ambientTints.push({
+                    x: x,
+                    y: y,
+                    radius: 0,
+                    maxRadius: Math.max(window.innerWidth, window.innerHeight) * 1.5,
+                    hue: customHue,
+                    opacity: 0.4
+                });
+            }
+
+            // 音声再生（パン位置を渡す）
+            new ArpeggioPlayer(keySelect, chordSelect, baseOctave, indexOffset, speedMultiplier, panPosition, x, y, themeSelect, customHue);
+
+            if (themeSelect !== '4') {
+                ripples.push(new Ripple(x, y, themeSelect, customHue, 0));
+            }
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#controls') || e.target.closest('#toggle-btn')) return;
+            triggerInteraction(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+            
+            const charCode = e.key.charCodeAt(0) || 65;
+            const randX = (charCode * 73) % window.innerWidth;
+            const randY = (charCode * 137) % window.innerHeight;
+
+            triggerInteraction(randX, randY);
+        });
+
+        let bgAnimTimer = 0;
+        function animate() {
+            const themeSelect = document.getElementById('themeSelect').value;
+
+            if (themeSelect === '3') {
+                document.body.style.backgroundColor = '#f7f4ed';
+                ctx.fillStyle = 'rgba(247, 244, 237, 0.25)';
+            } else if (themeSelect === '4') {
+                document.body.style.backgroundColor = '#e0f2fe';
+                ctx.fillStyle = 'rgba(224, 242, 254, 0.25)';
+            } else if (themeSelect === '2') {
+                document.body.style.backgroundColor = '#0b0f19';
+                ctx.fillStyle = 'rgba(11, 15, 25, 0.25)';
+            } else {
+                bgAnimTimer += 0.002;
+                let currentBgHue = (210 + Math.sin(bgAnimTimer) * 40 + (targetBgHue - 210) * 0.1) % 360;
+                document.body.style.backgroundColor = `hsl(${currentBgHue}, 25%, 8%)`;
+                ctx.fillStyle = `hsla(${currentBgHue}, 30%, 8%, 0.25)`;
+            }
+
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (themeSelect === '2' && ambientTints.length > 0) {
+                for (let i = ambientTints.length - 1; i >= 0; i--) {
+                    let tint = ambientTints[i];
+                    tint.radius += 3.5;
+                    tint.opacity = Math.max(0, 0.4 * (1 - tint.radius / tint.maxRadius));
+
+                    ctx.save();
+                    let grad = ctx.createRadialGradient(tint.x, tint.y, 0, tint.x, tint.y, tint.radius);
+                    grad.addColorStop(0, `hsla(${tint.hue}, 80%, 25%, ${tint.opacity})`);
+                    grad.addColorStop(0.7, `hsla(${tint.hue}, 60%, 15%, ${tint.opacity * 0.7})`);
+                    grad.addColorStop(1, 'transparent');
+
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+
+                    if (tint.opacity <= 0) {
+                        ambientTints.splice(i, 1);
+                    }
+                }
+            } else if (themeSelect !== '2') {
+                ambientTints = [];
+            }
+
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                ripples[i].update();
+                ripples[i].draw(ctx);
+                if (ripples[i].opacity <= 0) {
+                    ripples.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
